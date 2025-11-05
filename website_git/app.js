@@ -7,6 +7,8 @@ class GitTutorialApp {
         this.startTime = null;
         this.timerInterval = null;
         this.stepCompleted = false; // Rastreia se o passo atual foi completado
+        this.commandHistory = []; // Histórico de comandos
+        this.historyIndex = -1; // Índice atual no histórico
         this.init();
     }
 
@@ -19,7 +21,16 @@ class GitTutorialApp {
     setupWelcomeScreen() {
         const startBtn = document.getElementById('startTutorialBtn');
         const welcomeScreen = document.getElementById('welcomeScreen');
+        const welcomeNarrative = document.getElementById('welcomeNarrative');
+        const header = document.getElementById('header');
         const headerInfo = document.getElementById('headerInfo');
+        const mainContent = document.getElementById('mainContent');
+        const navigation = document.getElementById('navigation');
+
+        // Inserir narrativa na tela de boas-vindas
+        if (welcomeNarrative && window.gameNarrative) {
+            welcomeNarrative.innerHTML = gameNarrative.intro;
+        }
 
         console.log('setupWelcomeScreen chamado', { startBtn, welcomeScreen, headerInfo });
 
@@ -27,8 +38,17 @@ class GitTutorialApp {
             startBtn.addEventListener('click', () => {
                 console.log('Botão clicado! Iniciando tutorial...');
                 welcomeScreen.style.display = 'none';
+                if (header) header.style.display = 'block';
                 headerInfo.style.display = 'flex';
-                this.startTutorial();
+                if (mainContent) mainContent.style.display = 'grid';
+                if (navigation) navigation.style.display = 'flex';
+                this.updateGamificationDisplay();
+                this.updateAchievementsDisplay();
+                
+                // Iniciar tour guiado antes do tutorial
+                setTimeout(() => {
+                    this.startTour();
+                }, 500);
             });
         } else {
             console.error('Elementos não encontrados:', { startBtn, welcomeScreen, headerInfo });
@@ -71,16 +91,101 @@ class GitTutorialApp {
             restartTutorial: document.getElementById('restartTutorial'),
             feedbackModal: document.getElementById('feedbackModal'),
             modalBody: document.getElementById('modalBody'),
-            modalClose: document.getElementById('modalClose')
+            modalClose: document.getElementById('modalClose'),
+            pointsDisplay: document.getElementById('pointsDisplay'),
+            levelDisplay: document.getElementById('levelDisplay'),
+            achievementsList: document.getElementById('achievementsList')
         };
+    }
+    
+    updateGamificationDisplay() {
+        if (window.achievementSystem && this.elements.pointsDisplay && this.elements.levelDisplay) {
+            // Atualizar pontos
+            const points = window.achievementSystem.points || 0;
+            this.elements.pointsDisplay.textContent = points;
+            
+            // Calcular e atualizar nível baseado nos pontos (100 pontos por nível)
+            const currentLevel = Math.floor(points / 100) + 1;
+            window.achievementSystem.level = currentLevel;
+            this.elements.levelDisplay.textContent = currentLevel;
+            
+            console.log('Gamificação atualizada:', { points, level: currentLevel });
+        }
+    }
+    
+    updateAchievementsDisplay() {
+        if (!window.achievementSystem || !this.elements.achievementsList) return;
+        
+        const achievements = window.achievementSystem.achievements;
+        const allAchievements = [
+            { name: 'Detetive Iniciante', description: 'Começou a investigação', icon: '🔍', unlocked: achievements.some(a => a.name === 'Detetive Iniciante') },
+            { name: 'Detetive Git', description: 'Completou a fase de investigação', icon: '🔍', unlocked: achievements.some(a => a.name === 'Detetive Git') },
+            { name: 'Arqueólogo do Código', description: 'Recuperou código perdido', icon: '🏺', unlocked: achievements.some(a => a.name === 'Arqueólogo do Código') },
+            { name: 'Arquiteto Git', description: 'Organizou branches e commits', icon: '🏗️', unlocked: achievements.some(a => a.name === 'Arquiteto Git') },
+            { name: 'Mestre Git', description: 'Preparou repositório para publicação', icon: '👑', unlocked: achievements.some(a => a.name === 'Mestre Git') },
+            { name: 'Desenvolvedor Publicado', description: 'Completou o desafio final', icon: '🚀', unlocked: achievements.some(a => a.name === 'Desenvolvedor Publicado') }
+        ];
+        
+        this.elements.achievementsList.innerHTML = allAchievements.map(a => `
+            <div class="achievement-item ${a.unlocked ? 'unlocked' : 'locked'}">
+                <div class="achievement-icon">${a.icon}</div>
+                <div class="achievement-info">
+                    <div class="achievement-name">${a.name}</div>
+                    <div class="achievement-description">${a.description}</div>
+                </div>
+            </div>
+        `).join('');
     }
 
     setupEventListeners() {
-        // Terminal input
+        // Terminal input com histórico de comandos
         this.elements.terminalInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                this.handleCommand(e.target.value);
+                const command = e.target.value.trim();
+                if (command) {
+                    // Adicionar ao histórico se não for vazio
+                    this.commandHistory.push(command);
+                    this.historyIndex = this.commandHistory.length;
+                    // Limitar histórico a 50 comandos
+                    if (this.commandHistory.length > 50) {
+                        this.commandHistory.shift();
+                    }
+                }
+                this.handleCommand(command);
                 e.target.value = '';
+            }
+        });
+
+        // Navegação no histórico com setas
+        this.elements.terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (this.commandHistory.length > 0) {
+                    if (this.historyIndex > 0) {
+                        this.historyIndex--;
+                    }
+                    this.elements.terminalInput.value = this.commandHistory[this.historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (this.historyIndex < this.commandHistory.length - 1) {
+                    this.historyIndex++;
+                    this.elements.terminalInput.value = this.commandHistory[this.historyIndex];
+                } else {
+                    this.historyIndex = this.commandHistory.length;
+                    this.elements.terminalInput.value = '';
+                }
+            } else if (e.key === 'Tab') {
+                // Autocomplete básico
+                e.preventDefault();
+                const input = e.target.value.trim();
+                const suggestions = this.getCommandSuggestions(input);
+                if (suggestions.length === 1) {
+                    this.elements.terminalInput.value = suggestions[0];
+                } else if (suggestions.length > 1) {
+                    // Mostrar sugestões
+                    this.showCommandSuggestions(suggestions);
+                }
             }
         });
 
@@ -106,7 +211,18 @@ class GitTutorialApp {
 
         this.elements.nextStep.addEventListener('click', () => {
             // Verificar se o passo atual foi completado antes de avançar
-            const step = tutorialSteps[this.currentStep];
+            const steps = window.tutorialSteps;
+            if (!steps || !steps[this.currentStep]) return;
+            const step = steps[this.currentStep];
+            
+            // Verificação especial para passo de configuração (id 6)
+            if (step.id === 6) {
+                if (!this.git.isConfigComplete || !this.git.isConfigComplete()) {
+                    this.showMessage('Configure ambas as informações (nome e email) antes de avançar.', 'error');
+                    return;
+                }
+            }
+            
             if (step && (step.command || step.showEditor || step.exercise)) {
                 if (!this.stepCompleted) {
                     if (step.command) {
@@ -147,8 +263,64 @@ class GitTutorialApp {
             this.toggleSolution();
         });
 
+        // Help button
+        const helpBtn = document.getElementById('helpBtn');
+        const helpPanel = document.getElementById('helpPanel');
+        const closeHelpBtn = document.getElementById('closeHelpBtn');
+        
+        if (helpBtn && helpPanel) {
+            helpBtn.addEventListener('click', () => {
+                helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+        
+        if (closeHelpBtn && helpPanel) {
+            closeHelpBtn.addEventListener('click', () => {
+                helpPanel.style.display = 'none';
+            });
+        }
+
+        // Atalhos de teclado
+        document.addEventListener('keydown', (e) => {
+            // F1 - Ajuda
+            if (e.key === 'F1') {
+                e.preventDefault();
+                if (helpPanel) {
+                    helpPanel.style.display = helpPanel.style.display === 'none' ? 'block' : 'none';
+                }
+            }
+            
+            // Esc - Fechar modais/ajuda
+            if (e.key === 'Escape') {
+                if (helpPanel && helpPanel.style.display !== 'none') {
+                    helpPanel.style.display = 'none';
+                }
+                if (this.elements.feedbackModal.classList.contains('active')) {
+                    this.hideModal();
+                }
+            }
+            
+            // Ctrl + Setas - Navegação entre passos
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    if (!this.elements.prevStep.disabled) {
+                        this.goToStep(this.currentStep - 1);
+                    }
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    if (!this.elements.nextStep.disabled && this.stepCompleted) {
+                        this.goToStep(this.currentStep + 1);
+                    }
+                }
+            }
+        });
+
         // Cursor guide animation
         this.setupCursorGuide();
+        
+        // Inicializar tooltips
+        this.initTooltips();
     }
 
     setupCursorGuide() {
@@ -167,11 +339,47 @@ class GitTutorialApp {
 
     startTutorial() {
         console.log('startTutorial chamado');
+        
+        // Usar window.tutorialSteps que é exportado de tutorial-data.js
+        const steps = window.tutorialSteps;
+        
+        if (!steps || steps.length === 0) {
+            console.error('tutorialSteps não está disponível!', {
+                window_tutorialSteps: typeof window.tutorialSteps,
+                length: steps ? steps.length : 'N/A'
+            });
+            
+            // Tentar esperar um pouco caso o script ainda esteja carregando
+            setTimeout(() => {
+                const retrySteps = window.tutorialSteps;
+                if (retrySteps && retrySteps.length > 0) {
+                    console.log('tutorialSteps carregado após espera, iniciando tutorial...');
+                    this.currentStep = 0;
+                    this.startTime = Date.now();
+                    this.startTimer();
+                    this.showStep(this.currentStep);
+                    console.log('Tutorial iniciado no passo:', this.currentStep);
+                } else {
+                    console.error('tutorialSteps ainda não disponível após espera');
+                    if (this.elements.instructionContent) {
+                        this.elements.instructionContent.innerHTML = `
+                            <div style="padding: 20px; color: #ff4444;">
+                                <h3>Erro ao carregar tutorial</h3>
+                                <p>Os dados do tutorial não foram carregados. Por favor, recarregue a página.</p>
+                                <p style="margin-top: 10px; font-size: 12px;">Debug: window.tutorialSteps = ${typeof window.tutorialSteps}</p>
+                            </div>
+                        `;
+                    }
+                }
+            }, 100);
+            return;
+        }
+        
         this.currentStep = 0;
         this.startTime = Date.now();
         this.startTimer();
         this.showStep(this.currentStep);
-        console.log('Tutorial iniciado no passo:', this.currentStep);
+        console.log('Tutorial iniciado no passo:', this.currentStep, 'Total de steps:', steps.length);
     }
 
     startTimer() {
@@ -193,43 +401,92 @@ class GitTutorialApp {
     }
 
     showStep(stepIndex) {
-        if (stepIndex < 0 || stepIndex >= tutorialSteps.length) {
+        // Usar window.tutorialSteps que é exportado de tutorial-data.js
+        const steps = window.tutorialSteps;
+        
+        if (!steps || steps.length === 0) {
+            console.error('tutorialSteps não está disponível!', {
+                window_tutorialSteps: typeof window.tutorialSteps,
+                tutorialSteps: typeof tutorialSteps,
+                length: steps ? steps.length : 'N/A'
+            });
+            this.elements.instructionContent.innerHTML = `
+                <div style="padding: 20px; color: #ff4444;">
+                    <h3>Erro ao carregar tutorial</h3>
+                    <p>Os dados do tutorial não foram carregados. Por favor, recarregue a página.</p>
+                    <p style="margin-top: 10px; font-size: 12px;">Debug: window.tutorialSteps = ${typeof window.tutorialSteps}</p>
+                </div>
+            `;
             return;
         }
 
-        const step = tutorialSteps[stepIndex];
+        if (stepIndex < 0 || stepIndex >= steps.length) {
+            console.error('Step index fora do range:', stepIndex, 'Total de steps:', steps.length);
+            return;
+        }
+
+        const step = steps[stepIndex];
         if (!step) {
             console.error('Step não encontrado no índice:', stepIndex);
             return;
         }
 
+        console.log('Mostrando passo:', stepIndex, 'Step:', step);
+
+        // Animação suave ao mudar de passo
+        this.elements.instructionContent.style.opacity = '0';
+        setTimeout(() => {
+            this.elements.instructionContent.style.opacity = '1';
+        }, 150);
+
         this.currentStep = stepIndex;
 
-        // Get current module
-        const module = getCurrentModule ? getCurrentModule(step.id) : tutorialModules.find(m => m.steps.includes(step.id));
+        // Get current module - usar window.tutorialModules também
+        const modules = window.tutorialModules;
+        let module = null;
+        
+        // Tentar usar getCurrentModule se disponível
+        if (window.getCurrentModule && typeof window.getCurrentModule === 'function') {
+            module = window.getCurrentModule(step.id);
+        }
+        
+        // Se não encontrou, buscar manualmente nos módulos
+        if (!module && modules && Array.isArray(modules)) {
+            module = modules.find(m => m.steps && m.steps.includes(step.id));
+        }
         
         // Update module and step info
         if (module) {
             this.elements.currentModule.textContent = module.name;
         }
-        this.elements.stepInfo.textContent = `Passo ${stepIndex + 1}/${tutorialSteps.length}`;
+        this.elements.stepInfo.textContent = `Passo ${stepIndex + 1}/${steps.length}`;
 
         // Update step type badge
-        this.elements.stepType.textContent = step.type === 'theory' ? 'Teoria' : 
-                                            step.type === 'exercise' ? 'Exercício' : 'Tutorial';
+        const typeMap = {
+            'theory': 'Teoria',
+            'exercise': 'Exercício',
+            'tutorial': 'Tutorial',
+            'story': 'História',
+            'challenge': 'Desafio'
+        };
+        this.elements.stepType.textContent = typeMap[step.type] || 'Tutorial';
         this.elements.stepType.className = `step-type ${step.type}`;
 
         // Update instruction - limpar primeiro e depois adicionar novo conteúdo
         this.elements.instructionContent.innerHTML = '';
         const instructionWrapper = document.createElement('div');
+        instructionWrapper.className = 'instruction-wrapper';
         instructionWrapper.innerHTML = `
-            <h3>${step.title || 'Instrução'}</h3>
-            <div>${step.instruction || ''}</div>
+            <h3 class="instruction-title">${step.title || 'Instrução'}</h3>
+            <div class="instruction-text">${step.instruction || ''}</div>
         `;
         this.elements.instructionContent.appendChild(instructionWrapper);
         
-        // Remover instrução duplicada se já existe na instrução do passo
-        // Não adicionar instrução automática se já está na instrução do passo
+        // Adicionar animação de entrada
+        setTimeout(() => {
+            instructionWrapper.style.opacity = '1';
+            instructionWrapper.style.transform = 'translateY(0)';
+        }, 50);
 
         // Show/hide theory box
         if (step.theory) {
@@ -278,6 +535,28 @@ class GitTutorialApp {
 
         // Reset step completion status
         this.stepCompleted = false;
+        
+        // Para o passo de configuração (id 6), verificar se já está completo
+        if (step.id === 6 && this.git.isConfigComplete) {
+            this.stepCompleted = this.git.isConfigComplete();
+        }
+
+        // Se for passo de história ou teoria sem comando, executar onSuccess automaticamente
+        if (!step.command && !step.showEditor && !step.exercise && step.onSuccess) {
+            // Executar onSuccess para passos de história para atualizar pontos/conquistas
+            try {
+                const result = step.onSuccess(this.git);
+                if (result && typeof result === 'string' && result.includes('pontos')) {
+                    // Atualizar gamificação se houver pontos
+                    if (window.achievementSystem) {
+                        this.updateGamificationDisplay();
+                        this.updateAchievementsDisplay();
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao executar onSuccess automático:', error);
+            }
+        }
 
         // Remover instrução de próximo passo se existir
         const existingNextInstruction = this.elements.instructionContent.querySelector('.next-instruction');
@@ -342,20 +621,35 @@ class GitTutorialApp {
         }
 
         // Update progress
-        const progress = ((stepIndex + 1) / tutorialSteps.length) * 100;
+        const progress = steps ? ((stepIndex + 1) / steps.length) * 100 : 0;
         this.updateProgress(progress);
+        
+        // Adicionar indicador visual de fase
+        this.updatePhaseIndicator(step.module);
 
         // Update navigation buttons
         this.elements.prevStep.disabled = stepIndex === 0;
         // Desabilitar botão próximo até que o passo seja completado (exceto para passos de teoria sem comando)
         if (step.command || step.showEditor || step.exercise) {
-            this.elements.nextStep.disabled = true; // Desabilitado até completar
+            // Para passos com ação, verificar se foi completado (não desabilitar sempre)
+            // Para o passo de configuração (id 6), verificar se ambas as configurações estão completas
+            if (step.id === 6 && this.git.isConfigComplete) {
+                this.elements.nextStep.disabled = !this.git.isConfigComplete();
+            } else {
+                this.elements.nextStep.disabled = !this.stepCompleted;
+            }
         } else {
             // Passos de teoria sem comando podem avançar imediatamente
-            this.elements.nextStep.disabled = stepIndex === tutorialSteps.length - 1;
-            // Se for passo de teoria sem comando, marcar como completo automaticamente
+            this.elements.nextStep.disabled = steps ? (stepIndex === steps.length - 1) : true;
+            // Se for passo de história ou teoria sem comando, marcar como completo automaticamente
             if (!step.command && !step.showEditor && !step.exercise) {
                 this.stepCompleted = true;
+                // Para passos de história, destacar o botão próximo
+                if (step.type === 'story') {
+                    setTimeout(() => {
+                        this.elements.nextStep.classList.add('pulse-animation');
+                    }, 500);
+                }
             }
         }
 
@@ -377,7 +671,9 @@ class GitTutorialApp {
     }
 
     toggleSolution() {
-        const step = tutorialSteps[this.currentStep];
+        const steps = window.tutorialSteps;
+        if (!steps || !steps[this.currentStep]) return;
+        const step = steps[this.currentStep];
         if (step.exercise) {
             const isVisible = this.elements.exerciseSolution.style.display !== 'none';
             this.elements.exerciseSolution.style.display = isVisible ? 'none' : 'block';
@@ -398,13 +694,14 @@ class GitTutorialApp {
             return;
         }
 
-        if (tutorialSteps.length === 0) {
+        const steps = window.tutorialSteps;
+        if (!steps || steps.length === 0) {
             console.error('tutorialSteps está vazio!');
             this.showMessage('Erro: tutorial não carregado.', 'error');
             return;
         }
 
-        const step = tutorialSteps[this.currentStep];
+        const step = steps[this.currentStep];
         console.log('Step atual:', step);
         
         if (!step) {
@@ -413,12 +710,19 @@ class GitTutorialApp {
             return;
         }
 
-        // Se o passo não requer comando, informar o usuário
+        // Se o passo não requer comando, informar o usuário de forma mais amigável
         if (!step.command) {
             console.log('Passo não requer comando');
             this.addTerminalLine(`$ ${command}`, 'command');
-            this.addTerminalLine('Esta etapa requer uma ação diferente. Siga as instruções no painel à esquerda.', 'error');
-            this.showMessage('Esta etapa requer uma ação diferente. Siga as instruções.', 'error');
+            
+            // Mensagem diferente para passos de história vs outros tipos
+            if (step.type === 'story') {
+                this.addTerminalLine('Esta é uma etapa de introdução. Leia as instruções e clique em "Próximo" para avançar para a primeira tarefa prática.', 'info');
+                this.showMessage('Esta etapa é apenas uma introdução. Clique em "Próximo" para começar a usar comandos Git.', 'info');
+            } else {
+                this.addTerminalLine('Esta etapa requer uma ação diferente. Siga as instruções no painel à esquerda.', 'info');
+                this.showMessage('Esta etapa requer uma ação diferente. Siga as instruções.', 'info');
+            }
             return;
         }
 
@@ -437,19 +741,54 @@ class GitTutorialApp {
                 if (typeof result !== 'string') {
                     result = result.success ? result.message : result.message || 'Comando executado!';
                 }
+                
+                // Extrair pontos do resultado se houver
+                if (typeof result === 'string' && result.includes('pontos')) {
+                    // Atualizar gamificação imediatamente após pontos serem adicionados
+                    if (window.achievementSystem) {
+                        this.updateGamificationDisplay();
+                        this.updateAchievementsDisplay();
+                    }
+                }
             } catch (error) {
                 console.error('Erro ao executar comando:', error);
                 result = 'Erro ao executar comando: ' + error.message;
             }
+            
+            // Adicionar feedback visual ao comando correto
+            this.elements.terminalInput.classList.add('success-flash');
+            setTimeout(() => {
+                this.elements.terminalInput.classList.remove('success-flash');
+            }, 500);
             
             this.addTerminalLine(result, 'success');
             
             // Update visualization
             this.updateGitVisualization();
             this.updateGitStatus();
+            
+            // Atualizar gamificação SEMPRE após comandos válidos
+            if (window.achievementSystem) {
+                // Forçar atualização imediata
+                this.updateGamificationDisplay();
+                this.updateAchievementsDisplay();
+            }
 
-            // Marcar passo como completo
-            this.stepCompleted = true;
+            // Marcar passo como completo apenas se ambas as configurações estiverem completas
+            // Para o passo de configuração (id 6), verificar se ambas estão configuradas
+            if (step.id === 6 && this.git.isConfigComplete) {
+                this.stepCompleted = this.git.isConfigComplete();
+            } else {
+                this.stepCompleted = true;
+            }
+            
+            // Se não completou, não habilitar botão próximo
+            if (!this.stepCompleted) {
+                this.elements.nextStep.disabled = true;
+                // Não mostrar animação ou mensagem de sucesso se ainda falta configurar
+                return; // Não continuar com o resto do código se não completou
+            }
+            
             this.elements.nextStep.disabled = false;
 
             // Destacar o botão "Próximo" para indicar que pode avançar
@@ -477,13 +816,13 @@ class GitTutorialApp {
                     const csFile = state.files.find(f => f.endsWith('.cs'));
                     if (csFile) {
                         fileInstruction.innerHTML = `
-                            <strong style="color: #3b82f6; display: block; margin-bottom: 8px;">📁 Arquivo criado!</strong>
+                            <strong style="color: #3b82f6; display: block; margin-bottom: 8px;">Arquivo criado!</strong>
                             <p style="color: #c9d1d9; margin: 5px 0; font-size: 15px;">O arquivo <strong style="color: #79c0ff;">${csFile}</strong> foi criado e está disponível no editor à direita.</p>
-                            <p style="color: #c9d1d9; margin: 5px 0; font-size: 14px;">👉 <strong>Veja o editor:</strong> Role para a direita ou olhe o painel "Editor de Código" para ver o arquivo criado.</p>
+                            <p style="color: #c9d1d9; margin: 5px 0; font-size: 14px;"><strong>Veja o editor:</strong> Role para a direita ou olhe o painel "Editor de Código" para ver o arquivo criado.</p>
                         `;
                     } else {
                         fileInstruction.innerHTML = `
-                            <strong style="color: #3b82f6; display: block; margin-bottom: 8px;">📁 Arquivos criados!</strong>
+                            <strong style="color: #3b82f6; display: block; margin-bottom: 8px;">Arquivos criados!</strong>
                             <p style="color: #c9d1d9; margin: 5px 0;">${state.files.length} arquivo(s) criado(s) e disponível(is) no editor à direita.</p>
                         `;
                     }
@@ -525,9 +864,9 @@ class GitTutorialApp {
             nextInstruction.className = 'next-instruction';
             nextInstruction.style.cssText = 'background: rgba(34, 197, 94, 0.15); padding: 15px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 15px 0;';
             nextInstruction.innerHTML = `
-                <strong style="color: #22c55e; display: block; margin-bottom: 10px; font-size: 16px;">✓ Comando executado com sucesso!</strong>
-                <p style="color: #c9d1d9; margin: 8px 0; font-size: 15px;"><strong>🎯 Próxima ação:</strong> Clique no botão <strong style="color: #22c55e; background: rgba(34, 197, 94, 0.1); padding: 2px 6px; border-radius: 4px;">"Próximo"</strong> abaixo para continuar.</p>
-                <p style="color: #c9d1d9; margin: 5px 0; font-size: 13px;">💡 Dica: O botão "Próximo" está pulsando em verde para chamar sua atenção!</p>
+                <strong style="color: #22c55e; display: block; margin-bottom: 10px; font-size: 16px;">Comando executado com sucesso!</strong>
+                <p style="color: #c9d1d9; margin: 8px 0; font-size: 15px;"><strong>Próxima ação:</strong> Clique no botão <strong style="color: #22c55e; background: rgba(34, 197, 94, 0.1); padding: 2px 6px; border-radius: 4px;">"Próximo"</strong> abaixo para continuar.</p>
+                <p style="color: #c9d1d9; margin: 5px 0; font-size: 13px;">Dica: O botão "Próximo" está pulsando em verde para chamar sua atenção!</p>
             `;
             
             // Remover instrução anterior se existir
@@ -543,10 +882,18 @@ class GitTutorialApp {
                 nextInstruction.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 200);
             
-            // Mensagem de sucesso mais clara
-            this.showMessage('Comando executado! Clique em "Próximo" para continuar.', 'success');
+            // Mensagem de sucesso mais clara com ícone
+            const successMessage = '✓ Comando executado com sucesso! Clique em "Próximo" para continuar.';
+            this.showMessage(successMessage, 'success');
         } else {
             console.log('Comando inválido');
+            
+            // Adicionar feedback visual ao comando incorreto
+            this.elements.terminalInput.classList.add('error-flash');
+            setTimeout(() => {
+                this.elements.terminalInput.classList.remove('error-flash');
+            }, 500);
+            
             this.addTerminalLine('Comando incorreto. Tente novamente.', 'error');
             if (step.hint) {
                 this.addTerminalLine(`Dica: ${step.hint}`, 'error');
@@ -556,43 +903,88 @@ class GitTutorialApp {
     }
 
     checkCodeCompletion() {
-        const step = tutorialSteps[this.currentStep];
+        const steps = window.tutorialSteps;
+        if (!steps || !steps[this.currentStep]) return;
+        const step = steps[this.currentStep];
         
         if (!step.showEditor && !step.exercise) {
             return;
         }
 
-        const code = this.elements.codeTextarea.value;
+        const code = this.elements.codeTextarea.value.trim();
+        
+        // Verificar se há código válido
+        if (!code || code.length < 10) {
+            return;
+        }
         
         // Check using exercise.check if available
         if (step.exercise && step.exercise.check) {
             if (step.exercise.check(code)) {
                 if (!this.stepCompleted) {
-                    this.stepCompleted = true;
-                    this.elements.nextStep.disabled = false;
-                    this.showMessage('Código correto! Excelente trabalho! Agora você pode avançar.', 'success');
-                    // Salvar automaticamente quando o código estiver correto
-                    const filename = this.elements.fileSelector.value;
-                    if (filename) {
-                        this.git.updateFile(filename, code);
-                    }
+                    this.completeCodeStep(step, code);
                 }
             }
         } else if (step.codeCheck) {
             // Fallback to old codeCheck
             if (step.codeCheck(code)) {
                 if (!this.stepCompleted) {
-                    this.stepCompleted = true;
-                    this.elements.nextStep.disabled = false;
-                    this.showMessage('Código correto! Agora você pode avançar para a próxima etapa.', 'success');
-                    // Salvar automaticamente quando o código estiver correto
-                    const filename = this.elements.fileSelector.value;
-                    if (filename) {
-                        this.git.updateFile(filename, code);
-                    }
+                    this.completeCodeStep(step, code);
                 }
             }
+        } else if (step.requiredFile && code.length > 50) {
+            // Se tem arquivo requerido e código mínimo, considerar completo
+            const fileName = step.requiredFile.split('.')[0];
+            if (!this.stepCompleted && code.includes(fileName)) {
+                this.completeCodeStep(step, code);
+            }
         }
+    }
+
+    completeCodeStep(step, code) {
+        this.stepCompleted = true;
+        this.elements.nextStep.disabled = false;
+        
+        // Salvar automaticamente quando o código estiver correto
+        const filename = this.elements.fileSelector.value;
+        if (filename) {
+            this.git.updateFile(filename, code);
+        }
+        
+        // Executar onSuccess se disponível
+        if (step.onSuccess) {
+            try {
+                const result = step.onSuccess(this.git);
+                if (result && typeof result === 'string') {
+                    this.showMessage(result, 'success');
+                } else {
+                    this.showMessage('Código correto! Excelente trabalho! Agora você pode avançar.', 'success');
+                }
+                
+                // Atualizar gamificação se houver pontos/conquistas
+                if (window.achievementSystem) {
+                    this.updateGamificationDisplay();
+                    this.updateAchievementsDisplay();
+                }
+            } catch (error) {
+                console.error('Erro ao executar onSuccess:', error);
+                this.showMessage('Código correto! Agora você pode avançar para a próxima etapa.', 'success');
+            }
+        } else {
+            this.showMessage('Código correto! Agora você pode avançar para a próxima etapa.', 'success');
+        }
+        
+        // Destacar o botão "Próximo"
+        this.elements.nextStep.classList.add('pulse-animation');
+        setTimeout(() => {
+            if (this.elements.nextStep.classList.contains('pulse-animation')) {
+                this.elements.nextStep.classList.remove('pulse-animation');
+            }
+        }, 5000);
+        
+        // Atualizar visualização
+        this.updateGitVisualization();
+        this.updateGitStatus();
     }
 
     loadFilesIntoSelector() {
@@ -674,6 +1066,9 @@ class GitTutorialApp {
         // Limpar conteúdo anterior
         this.elements.codeEditor.textContent = code;
         
+        // Atualizar contador de linhas
+        this.updateLineNumbers(code);
+        
         // Verificar se Prism está disponível
         if (typeof Prism === 'undefined' || !Prism.highlightElement) {
             console.warn('Prism não está disponível');
@@ -698,18 +1093,54 @@ class GitTutorialApp {
         }
     }
 
+    updateLineNumbers(code) {
+        const lineNumbersEl = document.getElementById('lineNumbers');
+        if (!lineNumbersEl) return;
+        
+        const lines = code.split('\n');
+        const lineCount = lines.length || 1;
+        
+        let numbersHTML = '';
+        for (let i = 1; i <= lineCount; i++) {
+            numbersHTML += `${i}\n`;
+        }
+        
+        lineNumbersEl.textContent = numbersHTML;
+    }
+
     addTerminalLine(text, type = 'normal') {
         const line = document.createElement('div');
         line.className = `terminal-line ${type}`;
         
+        // Ícones para diferentes tipos de mensagem
+        const icons = {
+            success: '<span class="terminal-icon success">✓</span>',
+            error: '<span class="terminal-icon error">✗</span>',
+            info: '<span class="terminal-icon info">ℹ</span>',
+            warning: '<span class="terminal-icon warning">⚠</span>'
+        };
+        
+        // Para tipo 'info', usar estilo de informação em vez de erro
+        if (type === 'info') {
+            line.style.color = '#79c0ff';
+            line.style.fontStyle = 'italic';
+        }
+        
         if (type === 'command') {
             line.innerHTML = `<span class="prompt">$</span><span class="text">${text}</span>`;
         } else {
-            line.innerHTML = `<span class="text">${text}</span>`;
+            const icon = icons[type] || '';
+            line.innerHTML = `${icon}<span class="text">${text}</span>`;
         }
         
         this.elements.terminalOutput.appendChild(line);
         this.elements.terminalOutput.scrollTop = this.elements.terminalOutput.scrollHeight;
+        
+        // Adicionar animação de entrada
+        setTimeout(() => {
+            line.style.opacity = '1';
+            line.style.transform = 'translateY(0)';
+        }, 10);
     }
 
     updateGitVisualization() {
@@ -774,7 +1205,26 @@ class GitTutorialApp {
 
     updateProgress(percentage) {
         this.elements.progressFill.style.width = percentage + '%';
-        this.elements.progressText.textContent = Math.round(percentage) + '%';
+        this.elements.progressText.textContent = `${Math.round(percentage)}%`;
+        
+        // Adicionar animação quando progresso aumenta
+        this.elements.progressFill.style.transition = 'width 0.5s ease';
+    }
+
+    updatePhaseIndicator(moduleId) {
+        const progressBar = this.elements.progressFill;
+        if (!progressBar) return;
+        
+        // Cores diferentes para cada fase
+        const phaseColors = {
+            1: '#ff4444', // Fase 1 - Vermelho (Investigação)
+            2: '#ff6b35', // Fase 2 - Laranja (Recuperação)
+            3: '#00d4ff', // Fase 3 - Azul claro (Reorganização)
+            4: '#00cc66'  // Fase 4 - Verde (Preparação)
+        };
+        
+        const color = phaseColors[moduleId] || '#0066ff';
+        progressBar.style.background = `linear-gradient(90deg, ${color} 0%, ${color}cc 100%)`;
     }
 
     showCursorGuide(target) {
@@ -807,12 +1257,55 @@ class GitTutorialApp {
         }, { once: true });
     }
 
-    hideCursorGuide() {
-        this.elements.cursorGuide.classList.remove('active');
+    getCommandSuggestions(input) {
+        const gitCommands = [
+            'git init',
+            'git status',
+            'git add',
+            'git commit',
+            'git log',
+            'git branch',
+            'git checkout',
+            'git merge',
+            'git clone'
+        ];
+        
+        if (!input || input.length < 2) return [];
+        
+        const lowerInput = input.toLowerCase();
+        return gitCommands.filter(cmd => 
+            cmd.toLowerCase().startsWith(lowerInput) || 
+            cmd.toLowerCase().includes(lowerInput)
+        );
+    }
+
+    showCommandSuggestions(suggestions) {
+        // Criar ou atualizar elemento de sugestões
+        let suggestionsEl = document.getElementById('commandSuggestions');
+        if (!suggestionsEl) {
+            suggestionsEl = document.createElement('div');
+            suggestionsEl.id = 'commandSuggestions';
+            suggestionsEl.className = 'command-suggestions';
+            this.elements.terminalInput.parentElement.appendChild(suggestionsEl);
+        }
+        
+        suggestionsEl.innerHTML = suggestions.map(s => 
+            `<div class="suggestion-item">${s}</div>`
+        ).join('');
+        suggestionsEl.style.display = 'block';
+        
+        // Ocultar após alguns segundos
+        setTimeout(() => {
+            if (suggestionsEl) {
+                suggestionsEl.style.display = 'none';
+            }
+        }, 3000);
     }
 
     getCurrentTarget() {
-        const step = tutorialSteps[this.currentStep];
+        const steps = window.tutorialSteps;
+        if (!steps || !steps[this.currentStep]) return null;
+        const step = steps[this.currentStep];
         if (step.command) {
             return this.elements.terminalInput;
         } else if (step.showEditor) {
@@ -822,8 +1315,11 @@ class GitTutorialApp {
     }
 
     goToStep(stepIndex) {
-        if (stepIndex >= 0 && stepIndex < tutorialSteps.length) {
+        const steps = window.tutorialSteps;
+        if (steps && stepIndex >= 0 && stepIndex < steps.length) {
             this.showStep(stepIndex);
+        } else {
+            console.error('Tentativa de ir para passo inválido:', stepIndex);
         }
     }
 
@@ -831,30 +1327,381 @@ class GitTutorialApp {
         if (confirm('Tem certeza que deseja reiniciar o tutorial? Todo o progresso será perdido.')) {
             this.stopTimer();
             this.git.reset();
+            
+            // Resetar sistema de conquistas
+            if (window.achievementSystem) {
+                window.achievementSystem.points = 0;
+                window.achievementSystem.level = 1;
+                window.achievementSystem.achievements = [];
+            }
+            
             this.elements.terminalOutput.innerHTML = '';
             this.currentStep = 0;
+            this.stepCompleted = false;
             this.startTime = Date.now();
             this.startTimer();
             this.showStep(this.currentStep);
             this.updateGitVisualization();
             this.updateGitStatus();
+            this.updateGamificationDisplay();
+            this.updateAchievementsDisplay();
             this.showMessage('Tutorial reiniciado!', 'success');
         }
     }
 
     showMessage(message, type = 'success') {
-        this.elements.modalBody.textContent = message;
+        const icons = {
+            success: '✓',
+            error: '✗',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+        
+        const icon = icons[type] || icons.success;
+        this.elements.modalBody.innerHTML = `<span class="message-icon">${icon}</span> ${message}`;
         this.elements.modalBody.className = `modal-body ${type}`;
         this.elements.feedbackModal.classList.add('active');
         
-        // Auto-hide after 3 seconds
+        // Auto-hide after 4 seconds (mais tempo para mensagens importantes)
         setTimeout(() => {
             this.hideModal();
-        }, 3000);
+        }, 4000);
     }
 
     hideModal() {
         this.elements.feedbackModal.classList.remove('active');
+    }
+
+    startTour() {
+        this.tourSteps = [
+            {
+                element: 'headerInfo',
+                title: 'Painel de Progresso',
+                description: 'Aqui você vê seu progresso no tutorial, a fase atual, pontos ganhos, nível alcançado e tempo decorrido. Acompanhe sua evolução!',
+                position: 'bottom'
+            },
+            {
+                element: 'instructionContent',
+                title: 'Painel de Instruções',
+                description: 'Este é o painel principal onde você receberá todas as instruções, teoria e exercícios. Leia com atenção cada passo!',
+                position: 'right'
+            },
+            {
+                element: 'terminalOutput',
+                title: 'Terminal Git',
+                description: 'Aqui você digita e executa comandos Git. Use as setas ↑↓ para navegar no histórico de comandos e Tab para autocomplete.',
+                position: 'top'
+            },
+            {
+                element: 'gitGraph',
+                title: 'Visualização Git',
+                description: 'Esta visualização mostra seu repositório Git em tempo real: commits, branches e merges. Veja como suas ações afetam o repositório!',
+                position: 'left'
+            },
+            {
+                element: 'achievementsList',
+                title: 'Conquistas',
+                description: 'Complete desafios e desbloqueie conquistas! Cada conquista desbloqueada aparece aqui com sua descrição.',
+                position: 'left'
+            },
+            {
+                element: 'codeEditorPanel',
+                title: 'Editor de Código',
+                description: 'Quando precisar criar ou editar arquivos, use este editor. O contador de linhas ajuda na navegação do código.',
+                position: 'top'
+            },
+            {
+                element: 'nextStep',
+                title: 'Navegação',
+                description: 'Use os botões Anterior e Próximo para navegar entre os passos. O botão próximo só fica habilitado quando você completa o passo atual.',
+                position: 'top'
+            }
+        ];
+
+        this.currentTourStep = 0;
+        this.showTourStep(0);
+    }
+
+    showTourStep(stepIndex) {
+        const step = this.tourSteps[stepIndex];
+        if (!step) {
+            // Tour completo, iniciar tutorial
+            this.endTour();
+            return;
+        }
+
+        const overlay = document.getElementById('tourOverlay');
+        const spotlight = document.getElementById('tourSpotlight');
+        const tooltip = document.getElementById('tourTooltip');
+        const title = document.getElementById('tourTitle');
+        const description = document.getElementById('tourDescription');
+        const stepInfo = document.getElementById('tourStepInfo');
+        const prevBtn = document.getElementById('tourPrevBtn');
+        const nextBtn = document.getElementById('tourNextBtn');
+        const skipBtn = document.getElementById('tourSkipBtn');
+
+        // Mostrar overlay
+        overlay.style.display = 'block';
+
+        // Obter elemento alvo
+        const targetElement = document.getElementById(step.element);
+        if (!targetElement) {
+            console.warn('Elemento do tour não encontrado:', step.element);
+            this.currentTourStep++;
+            setTimeout(() => this.showTourStep(this.currentTourStep), 100);
+            return;
+        }
+
+        // Calcular posição do elemento
+        const rect = targetElement.getBoundingClientRect();
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+
+        // Criar spotlight highlight
+        const highlightPadding = 10;
+        spotlight.style.cssText = `
+            position: absolute;
+            left: ${rect.left + scrollX - highlightPadding}px;
+            top: ${rect.top + scrollY - highlightPadding}px;
+            width: ${rect.width + (highlightPadding * 2)}px;
+            height: ${rect.height + (highlightPadding * 2)}px;
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75),
+                        0 0 0 0 rgba(0, 102, 255, 0.5),
+                        0 0 20px rgba(0, 102, 255, 0.5),
+                        inset 0 0 0 2px rgba(0, 102, 255, 0.8);
+            pointer-events: none;
+            z-index: 10001;
+            transition: all 0.3s ease;
+            animation: pulseHighlight 2s ease-in-out infinite;
+        `;
+
+        // Atualizar conteúdo do tooltip
+        title.textContent = step.title;
+        description.textContent = step.description;
+        stepInfo.textContent = `${stepIndex + 1}/${this.tourSteps.length}`;
+
+        // Posicionar tooltip
+        const tooltipWidth = 350;
+        const tooltipHeight = 200;
+        let tooltipLeft, tooltipTop;
+
+        switch (step.position) {
+            case 'top':
+                tooltipLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+                tooltipTop = rect.top + scrollY - tooltipHeight - 20;
+                break;
+            case 'bottom':
+                tooltipLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+                tooltipTop = rect.top + scrollY + rect.height + 20;
+                break;
+            case 'left':
+                tooltipLeft = rect.left + scrollX - tooltipWidth - 20;
+                tooltipTop = rect.top + scrollY + (rect.height / 2) - (tooltipHeight / 2);
+                break;
+            case 'right':
+                tooltipLeft = rect.left + scrollX + rect.width + 20;
+                tooltipTop = rect.top + scrollY + (rect.height / 2) - (tooltipHeight / 2);
+                break;
+            default:
+                tooltipLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+                tooltipTop = rect.top + scrollY + rect.height + 20;
+        }
+
+        // Ajustar para não sair da tela
+        tooltipLeft = Math.max(20, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 20));
+        tooltipTop = Math.max(20, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 20));
+
+        tooltip.style.cssText = `
+            position: absolute;
+            left: ${tooltipLeft}px;
+            top: ${tooltipTop}px;
+            width: ${tooltipWidth}px;
+            z-index: 10002;
+        `;
+
+        // Atualizar botões de navegação
+        prevBtn.disabled = stepIndex === 0;
+        nextBtn.textContent = stepIndex === this.tourSteps.length - 1 ? 'Começar Tutorial →' : 'Próximo →';
+
+        // Event listeners
+        prevBtn.onclick = () => {
+            if (stepIndex > 0) {
+                this.currentTourStep--;
+                this.showTourStep(this.currentTourStep);
+            }
+        };
+
+        nextBtn.onclick = () => {
+            if (stepIndex < this.tourSteps.length - 1) {
+                this.currentTourStep++;
+                this.showTourStep(this.currentTourStep);
+            } else {
+                this.endTour();
+            }
+        };
+
+        skipBtn.onclick = () => {
+            this.endTour();
+        };
+
+        // Scroll suave até o elemento (com delay para garantir que o overlay está visível)
+        setTimeout(() => {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Reposicionar spotlight após scroll
+            setTimeout(() => {
+                const newRect = targetElement.getBoundingClientRect();
+                const newScrollX = window.scrollX || window.pageXOffset;
+                const newScrollY = window.scrollY || window.pageYOffset;
+                
+                spotlight.style.left = `${newRect.left + newScrollX - highlightPadding}px`;
+                spotlight.style.top = `${newRect.top + newScrollY - highlightPadding}px`;
+                
+                // Reposicionar tooltip também
+                let newTooltipLeft, newTooltipTop;
+                switch (step.position) {
+                    case 'top':
+                        newTooltipLeft = newRect.left + (newRect.width / 2) - (tooltipWidth / 2);
+                        newTooltipTop = newRect.top + newScrollY - tooltipHeight - 20;
+                        break;
+                    case 'bottom':
+                        newTooltipLeft = newRect.left + (newRect.width / 2) - (tooltipWidth / 2);
+                        newTooltipTop = newRect.top + newScrollY + newRect.height + 20;
+                        break;
+                    case 'left':
+                        newTooltipLeft = newRect.left + newScrollX - tooltipWidth - 20;
+                        newTooltipTop = newRect.top + newScrollY + (newRect.height / 2) - (tooltipHeight / 2);
+                        break;
+                    case 'right':
+                        newTooltipLeft = newRect.left + newScrollX + newRect.width + 20;
+                        newTooltipTop = newRect.top + newScrollY + (newRect.height / 2) - (tooltipHeight / 2);
+                        break;
+                    default:
+                        newTooltipLeft = newRect.left + (newRect.width / 2) - (tooltipWidth / 2);
+                        newTooltipTop = newRect.top + newScrollY + newRect.height + 20;
+                }
+                
+                newTooltipLeft = Math.max(20, Math.min(newTooltipLeft, window.innerWidth - tooltipWidth - 20));
+                newTooltipTop = Math.max(20, Math.min(newTooltipTop, window.innerHeight - tooltipHeight - 20));
+                
+                tooltip.style.left = `${newTooltipLeft}px`;
+                tooltip.style.top = `${newTooltipTop}px`;
+            }, 500);
+        }, 100);
+        
+        // Adicionar classe de highlight ao elemento
+        targetElement.classList.add('tour-highlighted');
+        
+        // Atualizar posições quando há scroll ou resize
+        const updatePositions = () => {
+            if (this.currentTourStep === stepIndex && overlay.style.display !== 'none') {
+                const newRect = targetElement.getBoundingClientRect();
+                const newScrollX = window.scrollX || window.pageXOffset;
+                const newScrollY = window.scrollY || window.pageYOffset;
+                
+                spotlight.style.left = `${newRect.left + newScrollX - highlightPadding}px`;
+                spotlight.style.top = `${newRect.top + newScrollY - highlightPadding}px`;
+                
+                let newTooltipLeft, newTooltipTop;
+                switch (step.position) {
+                    case 'top':
+                        newTooltipLeft = newRect.left + (newRect.width / 2) - (tooltipWidth / 2);
+                        newTooltipTop = newRect.top + newScrollY - tooltipHeight - 20;
+                        break;
+                    case 'bottom':
+                        newTooltipLeft = newRect.left + (newRect.width / 2) - (tooltipWidth / 2);
+                        newTooltipTop = newRect.top + newScrollY + newRect.height + 20;
+                        break;
+                    case 'left':
+                        newTooltipLeft = newRect.left + newScrollX - tooltipWidth - 20;
+                        newTooltipTop = newRect.top + newScrollY + (newRect.height / 2) - (tooltipHeight / 2);
+                        break;
+                    case 'right':
+                        newTooltipLeft = newRect.left + newScrollX + newRect.width + 20;
+                        newTooltipTop = newRect.top + newScrollY + (newRect.height / 2) - (tooltipHeight / 2);
+                        break;
+                    default:
+                        newTooltipLeft = newRect.left + (newRect.width / 2) - (tooltipWidth / 2);
+                        newTooltipTop = newRect.top + newScrollY + newRect.height + 20;
+                }
+                
+                newTooltipLeft = Math.max(20, Math.min(newTooltipLeft, window.innerWidth - tooltipWidth - 20));
+                newTooltipTop = Math.max(20, Math.min(newTooltipTop, window.innerHeight - tooltipHeight - 20));
+                
+                tooltip.style.left = `${newTooltipLeft}px`;
+                tooltip.style.top = `${newTooltipTop}px`;
+            }
+        };
+        
+        // Adicionar listeners para scroll e resize
+        const handleScroll = () => updatePositions();
+        const handleResize = () => updatePositions();
+        
+        window.addEventListener('scroll', handleScroll, true);
+        window.addEventListener('resize', handleResize);
+        
+        // Remover listeners anteriores se existirem
+        if (this.tourScrollHandler) {
+            window.removeEventListener('scroll', this.tourScrollHandler, true);
+        }
+        if (this.tourResizeHandler) {
+            window.removeEventListener('resize', this.tourResizeHandler);
+        }
+        
+        this.tourScrollHandler = handleScroll;
+        this.tourResizeHandler = handleResize;
+    }
+
+    endTour() {
+        const overlay = document.getElementById('tourOverlay');
+        overlay.style.display = 'none';
+
+        // Remover listeners
+        if (this.tourScrollHandler) {
+            window.removeEventListener('scroll', this.tourScrollHandler, true);
+            this.tourScrollHandler = null;
+        }
+        if (this.tourResizeHandler) {
+            window.removeEventListener('resize', this.tourResizeHandler);
+            this.tourResizeHandler = null;
+        }
+
+        // Remover highlights
+        document.querySelectorAll('.tour-highlighted').forEach(el => {
+            el.classList.remove('tour-highlighted');
+        });
+
+        // Iniciar tutorial
+        this.startTutorial();
+    }
+
+    initTooltips() {
+        // Criar tooltips para elementos com data-tooltip
+        document.querySelectorAll('[data-tooltip]').forEach(element => {
+            element.addEventListener('mouseenter', (e) => {
+                const tooltipText = e.target.getAttribute('data-tooltip');
+                if (!tooltipText) return;
+                
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.textContent = tooltipText;
+                document.body.appendChild(tooltip);
+                
+                const rect = e.target.getBoundingClientRect();
+                tooltip.style.left = `${rect.left + rect.width / 2 - tooltip.offsetWidth / 2}px`;
+                tooltip.style.top = `${rect.top - tooltip.offsetHeight - 8}px`;
+                
+                e.target._tooltip = tooltip;
+            });
+            
+            element.addEventListener('mouseleave', (e) => {
+                if (e.target._tooltip) {
+                    e.target._tooltip.remove();
+                    e.target._tooltip = null;
+                }
+            });
+        });
     }
 }
 

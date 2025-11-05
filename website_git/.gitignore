@@ -66,6 +66,9 @@ TestResults/
 *.coverage
 
 # Arquivos de relatório
-*.html
+# *.html  # Removido para permitir index.html
 reports/
+
+# Exceção: permitir index.html (arquivo principal)
+!index.html
 

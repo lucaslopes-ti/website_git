@@ -8,7 +8,11 @@ class GitSimulator {
             commits: [],
             files: {},
             stagingArea: [],
-            remote: null
+            remote: null,
+            config: {
+                'user.name': null,
+                'user.email': null
+            }
         };
     }
 
@@ -213,6 +217,25 @@ class GitSimulator {
         };
     }
 
+    config(option, value) {
+        if (option === 'user.name' || option === 'user.email') {
+            this.repo.config[option] = value;
+            return { 
+                success: true, 
+                message: `Configuração '${option}' definida como '${value}'` 
+            };
+        }
+        return { success: false, message: `Opção de configuração desconhecida: ${option}` };
+    }
+
+    getConfig(option) {
+        return this.repo.config[option] || null;
+    }
+
+    isConfigComplete() {
+        return this.repo.config['user.name'] !== null && this.repo.config['user.email'] !== null;
+    }
+
     reset() {
         this.repo = {
             initialized: false,
@@ -221,7 +244,11 @@ class GitSimulator {
             commits: [],
             files: {},
             stagingArea: [],
-            remote: null
+            remote: null,
+            config: {
+                'user.name': null,
+                'user.email': null
+            }
         };
     }
 }
