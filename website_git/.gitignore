@@ -1,0 +1,71 @@
+# Arquivos de documentação Markdown
+*.md
+
+# Arquivos sensíveis e de configuração
+*.env
+*.secret
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Arquivos de build
+bin/
+obj/
+Build/
+build/
+dist/
+*.dll
+*.exe
+*.pdb
+
+# Arquivos de Unity (se usar Unity)
+Library/
+Temp/
+*.unityproj
+*.sln
+*.csproj.user
+
+# Arquivos de backup
+*.bak
+*.backup
+*~
+
+# Arquivos de configuração local
+config.local.json
+settings.local.json
+appsettings.local.json
+
+# Arquivos de dependências
+node_modules/
+packages/
+
+# Arquivos de test
+TestResults/
+*.trx
+*.coverage
+
+# Arquivos de relatório
+*.html
+reports/
+
