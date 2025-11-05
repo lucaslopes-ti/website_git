@@ -1846,6 +1846,15 @@ Esta é a primeira versão estável do projeto Estação de Lançamento.`);
                     <p style="color: #ffffff; margin: 8px 0; line-height: 1.7;">
                         Use tudo que você aprendeu para criar seu próprio projeto do zero e publicá-lo em uma plataforma real.
                     </p>
+                    <div style="background: rgba(0, 204, 102, 0.2); padding: 15px; border-radius: 6px; margin-top: 15px; border: 2px dashed #00cc66;">
+                        <p style="color: #00cc66; font-weight: 600; margin-bottom: 8px;">🎮 PUBLICAR NO SITE DA UNIDADE:</p>
+                        <p style="color: #ffffff; margin: 4px 0; font-size: 14px;">
+                            Após completar o desafio, publique seu jogo no site da unidade para demonstrar que você concluiu a missão!
+                        </p>
+                        <p style="color: #ffffff; margin: 4px 0; font-size: 14px; font-style: italic;">
+                            💡 Dica: Use o link do seu jogo publicado como prova de conclusão do desafio.
+                        </p>
+                    </div>
                     <p style="color: #00d4ff; margin-top: 12px; font-weight: 600;">
                         Duração: 2 horas | Recompensa: 200 pontos | Conquista: "Desenvolvedor Publicado"
                     </p>
@@ -1909,11 +1918,21 @@ const finalChallenge = {
             <ol style="margin-left: 20px; line-height: 2;">
                 <li><strong>Mini-GDD:</strong> Documento de Game Design simplificado</li>
                 <li><strong>Repositório Git funcional:</strong> Com branches organizadas e commits significativos</li>
-                <li><strong>Jogo publicado:</strong> Na plataforma itch.io ou senaigamehub.vercel.app</li>
+                <li><strong>Jogo publicado:</strong> No site da unidade (<strong style="color: #00ff88;">senaigamehub.vercel.app</strong>) ou itch.io</li>
             </ol>
+            <div style="background: rgba(0, 204, 102, 0.15); padding: 16px; border-radius: 8px; border-left: 4px solid #00cc66; margin-top: 20px;">
+                <p style="color: #ffffff; margin: 0; font-size: 15px; line-height: 1.6;">
+                    <strong style="color: #00cc66;">📌 IMPORTANTE:</strong> Para demonstrar que você concluiu o desafio, publique seu jogo no site da unidade 
+                    (<strong>senaigamehub.vercel.app</strong>) e compartilhe o link como prova de conclusão. 
+                    Esta é a forma oficial de demonstrar que você dominou Git e publicou seu primeiro jogo!
+                </p>
+            </div>
             <p style="color: #00d4ff; font-weight: 600; margin-top: 20px;">
                 ⏱️ Tempo: 2 horas | 💰 Recompensa: 200 pontos | 🏆 Conquista: "Desenvolvedor Publicado"
             </p>
+            <div id="easterEggTrigger" style="cursor: pointer; text-align: center; margin-top: 15px; opacity: 0.3; transition: opacity 0.3s;">
+                <p style="color: #666; font-size: 11px; margin: 0;">💡 Clique aqui 7 vezes para descobrir algo especial...</p>
+            </div>
         </div>
     `,
     deliverables: [
@@ -1937,15 +1956,17 @@ const finalChallenge = {
         },
         {
             name: 'Jogo Publicado',
-            description: 'Jogo publicado em itch.io ou senaigamehub.vercel.app',
+            description: 'Jogo publicado no site da unidade (senaigamehub.vercel.app) ou itch.io',
             checklist: [
                 'Build do jogo criado',
                 'Arquivos enviados para plataforma',
-                'Página do jogo configurada',
+                'Página do jogo configurada no site da unidade',
                 'Screenshots/vídeo adicionados',
-                'Link de acesso funcional'
+                'Link de acesso funcional',
+                'Jogo disponível para demonstração'
             ],
-            points: 75
+            points: 75,
+            easterEgg: '🎉 Parabéns! Você descobriu o Easter Egg! Publique seu jogo e compartilhe o link como prova de que você é um verdadeiro desenvolvedor! 🚀'
         }
     ],
     steps: [

@@ -1,4 +1,18 @@
 // App Principal - Controla o fluxo do tutorial interativo
+// Modo Debug - desative em produção
+const DEBUG_MODE = false;
+
+// Função helper para logs condicionais
+const debugLog = (...args) => {
+    if (DEBUG_MODE) {
+        console.log(...args);
+    }
+};
+
+const debugError = (...args) => {
+    console.error(...args); // Erros sempre são logados
+};
+
 class GitTutorialApp {
     constructor() {
         this.git = new GitSimulator();
@@ -9,6 +23,8 @@ class GitTutorialApp {
         this.stepCompleted = false; // Rastreia se o passo atual foi completado
         this.commandHistory = []; // Histórico de comandos
         this.historyIndex = -1; // Índice atual no histórico
+        this.debounceTimers = {}; // Para debounce de eventos
+        this.cachedElements = {}; // Cache de queries DOM
         this.init();
     }
 
@@ -32,11 +48,11 @@ class GitTutorialApp {
             welcomeNarrative.innerHTML = gameNarrative.intro;
         }
 
-        console.log('setupWelcomeScreen chamado', { startBtn, welcomeScreen, headerInfo });
+        debugLog('setupWelcomeScreen chamado', { startBtn, welcomeScreen, headerInfo });
 
         if (startBtn && welcomeScreen && headerInfo) {
             startBtn.addEventListener('click', () => {
-                console.log('Botão clicado! Iniciando tutorial...');
+                debugLog('Botão clicado! Iniciando tutorial...');
                 welcomeScreen.style.display = 'none';
                 if (header) header.style.display = 'block';
                 headerInfo.style.display = 'flex';
@@ -51,7 +67,7 @@ class GitTutorialApp {
                 }, 500);
             });
         } else {
-            console.error('Elementos não encontrados:', { startBtn, welcomeScreen, headerInfo });
+            debugError('Elementos não encontrados:', { startBtn, welcomeScreen, headerInfo });
         }
     }
 
@@ -109,7 +125,7 @@ class GitTutorialApp {
             window.achievementSystem.level = currentLevel;
             this.elements.levelDisplay.textContent = currentLevel;
             
-            console.log('Gamificação atualizada:', { points, level: currentLevel });
+            debugLog('Gamificação atualizada:', { points, level: currentLevel });
         }
     }
     
@@ -252,11 +268,11 @@ class GitTutorialApp {
             }
         });
 
-        // Code textarea change
-        this.elements.codeTextarea.addEventListener('input', () => {
+        // Code textarea change - com debounce para melhor performance
+        this.elements.codeTextarea.addEventListener('input', this.debounce(() => {
             this.updateCodeHighlight();
             this.checkCodeCompletion();
-        });
+        }, 300, 'codeUpdate'));
 
         // Show solution button
         this.elements.showSolution.addEventListener('click', () => {
@@ -338,13 +354,13 @@ class GitTutorialApp {
     }
 
     startTutorial() {
-        console.log('startTutorial chamado');
+        debugLog('startTutorial chamado');
         
         // Usar window.tutorialSteps que é exportado de tutorial-data.js
         const steps = window.tutorialSteps;
         
         if (!steps || steps.length === 0) {
-            console.error('tutorialSteps não está disponível!', {
+            debugError('tutorialSteps não está disponível!', {
                 window_tutorialSteps: typeof window.tutorialSteps,
                 length: steps ? steps.length : 'N/A'
             });
@@ -353,25 +369,25 @@ class GitTutorialApp {
             setTimeout(() => {
                 const retrySteps = window.tutorialSteps;
                 if (retrySteps && retrySteps.length > 0) {
-                    console.log('tutorialSteps carregado após espera, iniciando tutorial...');
+                    debugLog('tutorialSteps carregado após espera, iniciando tutorial...');
                     this.currentStep = 0;
                     this.startTime = Date.now();
                     this.startTimer();
                     this.showStep(this.currentStep);
-                    console.log('Tutorial iniciado no passo:', this.currentStep);
+                    debugLog('Tutorial iniciado no passo:', this.currentStep);
                 } else {
-                    console.error('tutorialSteps ainda não disponível após espera');
+                    debugError('tutorialSteps ainda não disponível após espera');
                     if (this.elements.instructionContent) {
                         this.elements.instructionContent.innerHTML = `
                             <div style="padding: 20px; color: #ff4444;">
                                 <h3>Erro ao carregar tutorial</h3>
                                 <p>Os dados do tutorial não foram carregados. Por favor, recarregue a página.</p>
-                                <p style="margin-top: 10px; font-size: 12px;">Debug: window.tutorialSteps = ${typeof window.tutorialSteps}</p>
                             </div>
                         `;
                     }
+                    this.showMessage('Erro: tutorial não carregado. Recarregue a página.', 'error');
                 }
-            }, 100);
+            }, 1000);
             return;
         }
         
@@ -379,7 +395,7 @@ class GitTutorialApp {
         this.startTime = Date.now();
         this.startTimer();
         this.showStep(this.currentStep);
-        console.log('Tutorial iniciado no passo:', this.currentStep, 'Total de steps:', steps.length);
+        debugLog('Tutorial iniciado no passo:', this.currentStep, 'Total de steps:', steps.length);
     }
 
     startTimer() {
@@ -405,7 +421,7 @@ class GitTutorialApp {
         const steps = window.tutorialSteps;
         
         if (!steps || steps.length === 0) {
-            console.error('tutorialSteps não está disponível!', {
+            debugError('tutorialSteps não está disponível!', {
                 window_tutorialSteps: typeof window.tutorialSteps,
                 tutorialSteps: typeof tutorialSteps,
                 length: steps ? steps.length : 'N/A'
@@ -414,24 +430,23 @@ class GitTutorialApp {
                 <div style="padding: 20px; color: #ff4444;">
                     <h3>Erro ao carregar tutorial</h3>
                     <p>Os dados do tutorial não foram carregados. Por favor, recarregue a página.</p>
-                    <p style="margin-top: 10px; font-size: 12px;">Debug: window.tutorialSteps = ${typeof window.tutorialSteps}</p>
                 </div>
             `;
             return;
         }
 
         if (stepIndex < 0 || stepIndex >= steps.length) {
-            console.error('Step index fora do range:', stepIndex, 'Total de steps:', steps.length);
+            debugError('Step index fora do range:', stepIndex, 'Total de steps:', steps.length);
             return;
         }
 
         const step = steps[stepIndex];
         if (!step) {
-            console.error('Step não encontrado no índice:', stepIndex);
+            debugError('Step não encontrado no índice:', stepIndex);
             return;
         }
 
-        console.log('Mostrando passo:', stepIndex, 'Step:', step);
+        debugLog('Mostrando passo:', stepIndex, 'Step:', step);
 
         // Animação suave ao mudar de passo
         this.elements.instructionContent.style.opacity = '0';
@@ -487,6 +502,13 @@ class GitTutorialApp {
             instructionWrapper.style.opacity = '1';
             instructionWrapper.style.transform = 'translateY(0)';
         }, 50);
+        
+        // Easter Egg - Detecta se estamos no passo 32 (desafio final desbloqueado)
+        if (step.id === 32) {
+            setTimeout(() => {
+                this.setupEasterEgg();
+            }, 1000);
+        }
 
         // Show/hide theory box
         if (step.theory) {
@@ -554,7 +576,7 @@ class GitTutorialApp {
                     }
                 }
             } catch (error) {
-                console.error('Erro ao executar onSuccess automático:', error);
+                debugError('Erro ao executar onSuccess automático:', error);
             }
         }
 
@@ -576,7 +598,7 @@ class GitTutorialApp {
         // Show/hide editor baseado no tipo de passo
         const editorPanel = document.getElementById('codeEditorPanel');
         if (!editorPanel) {
-            console.error('Editor panel não encontrado!');
+            debugError('Editor panel não encontrado!');
         } else {
             if (step.showEditor || step.type === 'exercise' || step.showFiles) {
                 editorPanel.style.display = 'flex';
@@ -685,34 +707,34 @@ class GitTutorialApp {
     }
 
     handleCommand(command) {
-        console.log('handleCommand chamado:', command, 'currentStep:', this.currentStep);
+        debugLog('handleCommand chamado:', command, 'currentStep:', this.currentStep);
         
         // Verificar se o tutorial foi iniciado
         if (this.currentStep === null || this.currentStep === undefined) {
-            console.log('Tutorial não iniciado ainda');
+            debugLog('Tutorial não iniciado ainda');
             this.showMessage('Por favor, clique em "Começar Tutorial" primeiro.', 'error');
             return;
         }
 
         const steps = window.tutorialSteps;
         if (!steps || steps.length === 0) {
-            console.error('tutorialSteps está vazio!');
+            debugError('tutorialSteps está vazio!');
             this.showMessage('Erro: tutorial não carregado.', 'error');
             return;
         }
 
         const step = steps[this.currentStep];
-        console.log('Step atual:', step);
+        debugLog('Step atual:', step);
         
         if (!step) {
-            console.error('Step não encontrado no índice:', this.currentStep);
+            debugError('Step não encontrado no índice:', this.currentStep);
             this.showMessage('Erro: passo do tutorial não encontrado.', 'error');
             return;
         }
 
         // Se o passo não requer comando, informar o usuário de forma mais amigável
         if (!step.command) {
-            console.log('Passo não requer comando');
+            debugLog('Passo não requer comando');
             this.addTerminalLine(`$ ${command}`, 'command');
             
             // Mensagem diferente para passos de história vs outros tipos
@@ -730,14 +752,14 @@ class GitTutorialApp {
         this.addTerminalLine(`$ ${command}`, 'command');
 
         // Validate command
-        console.log('Validando comando:', command, 'com função:', step.validation);
+        debugLog('Validando comando:', command, 'com função:', step.validation);
         if (step.validation && step.validation(command)) {
-            console.log('Comando válido! Executando onSuccess...');
+            debugLog('Comando válido! Executando onSuccess...');
             // Execute command
             let result;
             try {
                 result = step.onSuccess ? step.onSuccess(this.git, command) : 'Comando executado com sucesso!';
-                console.log('Resultado do onSuccess:', result);
+                debugLog('Resultado do onSuccess:', result);
                 if (typeof result !== 'string') {
                     result = result.success ? result.message : result.message || 'Comando executado!';
                 }
@@ -751,7 +773,7 @@ class GitTutorialApp {
                     }
                 }
             } catch (error) {
-                console.error('Erro ao executar comando:', error);
+                debugError('Erro ao executar comando:', error);
                 result = 'Erro ao executar comando: ' + error.message;
             }
             
@@ -886,7 +908,7 @@ class GitTutorialApp {
             const successMessage = '✓ Comando executado com sucesso! Clique em "Próximo" para continuar.';
             this.showMessage(successMessage, 'success');
         } else {
-            console.log('Comando inválido');
+            debugLog('Comando inválido');
             
             // Adicionar feedback visual ao comando incorreto
             this.elements.terminalInput.classList.add('error-flash');
@@ -896,7 +918,7 @@ class GitTutorialApp {
             
             this.addTerminalLine('Comando incorreto. Tente novamente.', 'error');
             if (step.hint) {
-                this.addTerminalLine(`Dica: ${step.hint}`, 'error');
+                this.addTerminalLine(`Dica: ${step.hint}`, 'info');
             }
             this.showMessage('Comando incorreto. Verifique a dica e tente novamente.', 'error');
         }
@@ -966,10 +988,10 @@ class GitTutorialApp {
                     this.updateGamificationDisplay();
                     this.updateAchievementsDisplay();
                 }
-            } catch (error) {
-                console.error('Erro ao executar onSuccess:', error);
-                this.showMessage('Código correto! Agora você pode avançar para a próxima etapa.', 'success');
-            }
+                } catch (error) {
+                    debugError('Erro ao executar onSuccess:', error);
+                    this.showMessage('Código correto! Agora você pode avançar para a próxima etapa.', 'success');
+                }
         } else {
             this.showMessage('Código correto! Agora você pode avançar para a próxima etapa.', 'success');
         }
@@ -991,7 +1013,7 @@ class GitTutorialApp {
         const state = this.git.getState();
         this.elements.fileSelector.innerHTML = '<option value="">Selecione um arquivo...</option>';
         
-        console.log('Arquivos disponíveis:', state.files);
+        debugLog('Arquivos disponíveis:', state.files);
         
         state.files.forEach(file => {
             const option = document.createElement('option');
@@ -1013,12 +1035,12 @@ class GitTutorialApp {
     loadFile(filename) {
         if (!filename) return;
         
-        console.log('Carregando arquivo:', filename);
+        debugLog('Carregando arquivo:', filename);
         const file = this.git.getFile(filename);
-        console.log('Arquivo encontrado:', file);
         
         if (file) {
-            this.elements.codeTextarea.value = file.content;
+            debugLog('Arquivo encontrado:', file);
+            this.elements.codeTextarea.value = file.content || '';
             // Aguardar múltiplos frames para garantir que o DOM está completamente atualizado
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
@@ -1026,7 +1048,8 @@ class GitTutorialApp {
                 });
             });
         } else {
-            console.error('Arquivo não encontrado:', filename);
+            debugError('Arquivo não encontrado:', filename);
+            this.showMessage(`Arquivo '${filename}' não encontrado.`, 'error');
         }
     }
 
@@ -1059,7 +1082,7 @@ class GitTutorialApp {
     updateCodeHighlight() {
         const code = this.elements.codeTextarea.value;
         if (!this.elements.codeEditor) {
-            console.warn('Elemento codeEditor não encontrado');
+            debugError('Elemento codeEditor não encontrado');
             return;
         }
         
@@ -1071,7 +1094,7 @@ class GitTutorialApp {
         
         // Verificar se Prism está disponível
         if (typeof Prism === 'undefined' || !Prism.highlightElement) {
-            console.warn('Prism não está disponível');
+            debugError('Prism não está disponível');
             return;
         }
         
@@ -1085,10 +1108,10 @@ class GitTutorialApp {
             if (this.elements.codeEditor.parentElement) {
                 Prism.highlightElement(this.elements.codeEditor);
             } else {
-                console.warn('Elemento codeEditor não tem parent');
+                debugError('Elemento codeEditor não tem parent');
             }
         } catch (error) {
-            console.warn('Erro ao fazer highlight do código:', error);
+            debugError('Erro ao fazer highlight do código:', error);
             // Se houver erro, apenas mostrar o código sem highlight
         }
     }
@@ -1319,7 +1342,7 @@ class GitTutorialApp {
         if (steps && stepIndex >= 0 && stepIndex < steps.length) {
             this.showStep(stepIndex);
         } else {
-            console.error('Tentativa de ir para passo inválido:', stepIndex);
+            debugError('Tentativa de ir para passo inválido:', stepIndex);
         }
     }
 
@@ -1446,7 +1469,7 @@ class GitTutorialApp {
         // Obter elemento alvo
         const targetElement = document.getElementById(step.element);
         if (!targetElement) {
-            console.warn('Elemento do tour não encontrado:', step.element);
+            debugError('Elemento do tour não encontrado:', step.element);
             this.currentTourStep++;
             setTimeout(() => this.showTourStep(this.currentTourStep), 100);
             return;
@@ -1676,6 +1699,24 @@ class GitTutorialApp {
         this.startTutorial();
     }
 
+    // Debounce helper para otimizar eventos frequentes
+    debounce(func, wait, key) {
+        return (...args) => {
+            if (this.debounceTimers[key]) {
+                clearTimeout(this.debounceTimers[key]);
+            }
+            this.debounceTimers[key] = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // Cache de elementos DOM para melhor performance
+    getCachedElement(id) {
+        if (!this.cachedElements[id]) {
+            this.cachedElements[id] = document.getElementById(id);
+        }
+        return this.cachedElements[id];
+    }
+
     initTooltips() {
         // Criar tooltips para elementos com data-tooltip
         document.querySelectorAll('[data-tooltip]').forEach(element => {
@@ -1701,6 +1742,116 @@ class GitTutorialApp {
                     e.target._tooltip = null;
                 }
             });
+        });
+    }
+
+    setupEasterEgg() {
+        const trigger = document.getElementById('easterEggTrigger');
+        if (!trigger) return;
+        
+        let clickCount = 0;
+        let easterEggActivated = false;
+        
+        trigger.addEventListener('click', () => {
+            if (easterEggActivated) return;
+            
+            clickCount++;
+            trigger.style.opacity = Math.min(0.3 + (clickCount * 0.1), 1);
+            
+            if (clickCount === 7) {
+                easterEggActivated = true;
+                this.activateEasterEgg();
+            } else if (clickCount < 7) {
+                // Feedback visual
+                trigger.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    trigger.style.transform = 'scale(1)';
+                }, 200);
+            }
+        });
+        
+        // Adicionar efeito hover
+        trigger.addEventListener('mouseenter', () => {
+            trigger.style.opacity = '0.7';
+        });
+        
+        trigger.addEventListener('mouseleave', () => {
+            if (!easterEggActivated) {
+                trigger.style.opacity = '0.3';
+            }
+        });
+    }
+
+    activateEasterEgg() {
+        // Criar modal do Easter Egg
+        const easterEggModal = document.createElement('div');
+        easterEggModal.className = 'easter-egg-modal';
+        easterEggModal.innerHTML = `
+            <div class="easter-egg-content">
+                <div class="easter-egg-header">
+                    <h2 style="color: #00ff88; margin: 0;">🎉 EASTER EGG DESCOBERTO! 🎉</h2>
+                    <button class="easter-egg-close">&times;</button>
+                </div>
+                <div class="easter-egg-body">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="font-size: 60px; animation: bounceEasterEgg 1s infinite;">🚀</div>
+                    </div>
+                    <p style="color: #ffffff; font-size: 18px; text-align: center; margin-bottom: 20px; line-height: 1.6;">
+                        Parabéns! Você descobriu um <strong style="color: #00ff88;">Easter Egg</strong> secreto!
+                    </p>
+                    <div style="background: rgba(0, 255, 136, 0.1); padding: 20px; border-radius: 8px; border: 2px solid #00ff88; margin-bottom: 20px;">
+                        <p style="color: #ffffff; margin: 0; line-height: 1.8;">
+                            <strong style="color: #00ff88;">Você é um verdadeiro explorador!</strong><br><br>
+                            Ao publicar seu jogo no site da unidade, você não apenas demonstra que concluiu o desafio, 
+                            mas também mostra que é um desenvolvedor dedicado que vai além do básico.<br><br>
+                            <strong style="color: #00ff88;">Continue explorando e aprendendo!</strong> Cada commit que você faz 
+                            é um passo em direção à maestria. 🎮✨
+                        </p>
+                    </div>
+                    <p style="color: #00ff88; text-align: center; font-weight: 600; font-size: 16px;">
+                        Bônus: +50 pontos extras por descobrir o Easter Egg! 🎁
+                    </p>
+                </div>
+                <div class="easter-egg-footer">
+                    <button class="btn-primary" id="easterEggCloseBtn">Fechar</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(easterEggModal);
+        
+        // Adicionar pontos extras
+        if (window.achievementSystem) {
+            window.achievementSystem.addPoints(50, 'Easter Egg descoberto');
+            this.updateGamificationDisplay();
+        }
+        
+        // Animar entrada
+        setTimeout(() => {
+            easterEggModal.style.opacity = '1';
+            easterEggModal.querySelector('.easter-egg-content').style.transform = 'scale(1)';
+        }, 10);
+        
+        // Fechar modal
+        const closeBtn = document.getElementById('easterEggCloseBtn');
+        const closeX = easterEggModal.querySelector('.easter-egg-close');
+        
+        const closeModal = () => {
+            easterEggModal.style.opacity = '0';
+            easterEggModal.querySelector('.easter-egg-content').style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                easterEggModal.remove();
+            }, 300);
+        };
+        
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (closeX) closeX.addEventListener('click', closeModal);
+        
+        // Fechar ao clicar fora
+        easterEggModal.addEventListener('click', (e) => {
+            if (e.target === easterEggModal) {
+                closeModal();
+            }
         });
     }
 }

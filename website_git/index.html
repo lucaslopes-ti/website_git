@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tutorial interativo e gamificado de Git para desenvolvedores de jogos digitais. Aprenda Git na prática enquanto conserta um repositório quebrado!">
+    <meta name="keywords" content="Git, tutorial, controle de versão, jogos digitais, aprendizado interativo">
+    <meta name="author" content="Sistema FIEMG">
+    <meta name="theme-color" content="#0d1117">
     <title>Tutorial Interativo de Git - Controle de Versão para Jogos Digitais</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Prism.js para syntax highlighting -->
@@ -13,9 +17,9 @@
 <body>
     <div class="container">
         <!-- Header -->
-        <div class="header" id="header" style="display: none;">
+        <header class="header" id="header" style="display: none;" role="banner">
             <h1>Tutorial Interativo de Git - Controle de Versão para Jogos Digitais</h1>
-            <div class="header-info" id="headerInfo" style="display: none;">
+            <div class="header-info" id="headerInfo" style="display: none;" role="status" aria-live="polite">
                 <div class="progress-section">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill">
@@ -46,28 +50,28 @@
         </div>
 
         <!-- Welcome Screen -->
-        <div class="welcome-screen" id="welcomeScreen">
+        <section class="welcome-screen" id="welcomeScreen" role="main" aria-label="Tela de boas-vindas">
             <h2>MISSÃO: REPOSITÓRIO QUEBRADO</h2>
-            <div class="welcome-content" id="welcomeNarrative">
+            <div class="welcome-content" id="welcomeNarrative" role="article">
                 <!-- Narrativa será inserida aqui via JavaScript -->
             </div>
-            <button id="startTutorialBtn" class="btn-primary">Aceitar Missão</button>
-        </div>
+            <button id="startTutorialBtn" class="btn-primary" aria-label="Aceitar missão e iniciar tutorial">Aceitar Missão</button>
+        </section>
 
         <!-- Main Content -->
-        <div class="main-content" id="mainContent" style="display: none;">
+        <main class="main-content" id="mainContent" style="display: none;" role="main">
             <!-- Left Panel -->
             <div class="left-panel">
                 <!-- Instruction Panel -->
-                <div class="instruction-panel">
+                <section class="instruction-panel" aria-labelledby="instructionTitle">
                     <div class="instruction-header">
-                        <h2>Instruções</h2>
+                        <h2 id="instructionTitle">Instruções</h2>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="step-type" id="stepType">Tutorial</span>
-                            <button class="help-btn" id="helpBtn" data-tooltip="Pressione F1 para ajuda" title="Ajuda (F1)">?</button>
+                            <span class="step-type" id="stepType" aria-label="Tipo do passo atual">Tutorial</span>
+                            <button class="help-btn" id="helpBtn" data-tooltip="Pressione F1 para ajuda" title="Ajuda (F1)" aria-label="Abrir painel de ajuda">?</button>
                         </div>
                     </div>
-                    <div class="instruction-content" id="instructionContent">
+                    <div class="instruction-content" id="instructionContent" role="region" aria-live="polite">
                         <!-- Conteúdo será inserido via JavaScript -->
                     </div>
                     
@@ -171,17 +175,17 @@
         </div>
 
         <!-- Navigation -->
-        <div class="navigation" id="navigation" style="display: none;">
-            <button id="prevStep" class="btn-nav" data-tooltip="Passo anterior (Ctrl+←)">← Anterior</button>
-            <button id="nextStep" class="btn-nav" data-tooltip="Próximo passo (Ctrl+→)">Próximo →</button>
-            <button id="restartTutorial" class="btn-secondary" data-tooltip="Reiniciar todo o tutorial">Reiniciar Tutorial</button>
-        </div>
+        <nav class="navigation" id="navigation" style="display: none;" role="navigation" aria-label="Navegação do tutorial">
+            <button id="prevStep" class="btn-nav" data-tooltip="Passo anterior (Ctrl+←)" aria-label="Ir para o passo anterior">← Anterior</button>
+            <button id="nextStep" class="btn-nav" data-tooltip="Próximo passo (Ctrl+→)" aria-label="Ir para o próximo passo">Próximo →</button>
+            <button id="restartTutorial" class="btn-secondary" data-tooltip="Reiniciar todo o tutorial" aria-label="Reiniciar tutorial">Reiniciar Tutorial</button>
+        </nav>
         
         <!-- Help Panel -->
-        <div class="help-panel" id="helpPanel" style="display: none;">
+        <div class="help-panel" id="helpPanel" style="display: none;" role="dialog" aria-labelledby="helpTitle" aria-modal="true">
             <div class="help-content">
-                <h3>Atalhos de Teclado</h3>
-                <ul class="help-shortcuts">
+                <h3 id="helpTitle">Atalhos de Teclado</h3>
+                <ul class="help-shortcuts" role="list">
                     <li><kbd>Ctrl</kbd> + <kbd>←</kbd> - Passo anterior</li>
                     <li><kbd>Ctrl</kbd> + <kbd>→</kbd> - Próximo passo</li>
                     <li><kbd>↑</kbd> / <kbd>↓</kbd> - Navegar histórico do terminal</li>
@@ -190,49 +194,49 @@
                     <li><kbd>Esc</kbd> - Fechar modais/ajuda</li>
                 </ul>
                 <h3>Dicas</h3>
-                <ul class="help-tips">
+                <ul class="help-tips" role="list">
                     <li>Leia as instruções com atenção antes de executar comandos</li>
                     <li>Use as dicas quando estiver com dificuldade</li>
                     <li>O terminal suporta histórico de comandos (setas ↑↓)</li>
                     <li>Acompanhe seu progresso na barra superior</li>
                     <li>Complete os passos para desbloquear conquistas</li>
                 </ul>
-                <button class="btn-primary" id="closeHelpBtn">Fechar</button>
+                <button class="btn-primary" id="closeHelpBtn" aria-label="Fechar painel de ajuda">Fechar</button>
             </div>
         </div>
     </div>
 
     <!-- Tour Overlay -->
-    <div class="tour-overlay" id="tourOverlay" style="display: none;">
-        <div class="tour-spotlight" id="tourSpotlight"></div>
+    <div class="tour-overlay" id="tourOverlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+        <div class="tour-spotlight" id="tourSpotlight" aria-hidden="true"></div>
         <div class="tour-tooltip" id="tourTooltip">
             <div class="tour-tooltip-header">
                 <h3 id="tourTitle">Bem-vindo!</h3>
-                <button class="tour-close" id="tourSkipBtn">Pular Tour</button>
+                <button class="tour-close" id="tourSkipBtn" aria-label="Pular tour guiado">Pular Tour</button>
             </div>
             <div class="tour-tooltip-content" id="tourContent">
                 <p id="tourDescription">Vamos conhecer a interface do tutorial.</p>
             </div>
             <div class="tour-tooltip-footer">
                 <div class="tour-progress">
-                    <span id="tourStepInfo">1/7</span>
+                    <span id="tourStepInfo" aria-label="Progresso do tour">1/7</span>
                 </div>
                 <div class="tour-navigation">
-                    <button class="btn-secondary" id="tourPrevBtn" disabled>← Anterior</button>
-                    <button class="btn-primary" id="tourNextBtn">Próximo →</button>
+                    <button class="btn-secondary" id="tourPrevBtn" disabled aria-label="Passo anterior do tour">← Anterior</button>
+                    <button class="btn-primary" id="tourNextBtn" aria-label="Próximo passo do tour">Próximo →</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Cursor Guide -->
-    <div class="cursor-guide" id="cursorGuide"></div>
+    <div class="cursor-guide" id="cursorGuide" aria-hidden="true"></div>
 
     <!-- Feedback Modal -->
-    <div class="modal" id="feedbackModal">
+    <div class="modal" id="feedbackModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
-            <span class="modal-close" id="modalClose">&times;</span>
-            <div class="modal-body" id="modalBody"></div>
+            <span class="modal-close" id="modalClose" aria-label="Fechar modal">&times;</span>
+            <div class="modal-body" id="modalBody" role="alert"></div>
         </div>
     </div>
 
